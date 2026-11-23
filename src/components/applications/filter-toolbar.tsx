@@ -1,4 +1,4 @@
-import { Check, Loader2, Search, Send } from 'lucide-react'
+import { Check, Search, Send } from 'lucide-react'
 import type { ApplicationSearch } from '#/lib/validators'
 import { Input } from '#/components/ui/input'
 import {
@@ -9,8 +9,9 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { Button } from '../ui/button'
+import { toast } from 'sonner'
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { toBlob } from 'html-to-image'
+import { domToBlob } from 'modern-screenshot'
 
 interface FilterToolbarProps {
   search: ApplicationSearch
@@ -19,15 +20,21 @@ interface FilterToolbarProps {
   shareTargetRef: RefObject<HTMLDivElement | null>
 }
 
-const captureOptions = {
-  pixelRatio: 2,
-  cacheBust: true,
-  backgroundColor: '#ffffff',
-  filter: (el: Node) =>
-    !(el instanceof HTMLElement && el.dataset.noCapture !== undefined),
-}
+// const captureOptions = {
+//   pixelRatio: 1.5,
+//   cacheBust: false,
+//   skipFonts: true,
+//   backgroundColor: '#ffffff',
+//   filter: (el: Node) =>
+//     !(el instanceof HTMLElement && el.dataset.noCapture !== undefined),
+// }
 
 type ShareStatus = 'idle' | 'loading' | 'done' | 'error'
+
+const waitForPaint = () =>
+  new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  )
 
 export function FilterToolbar({
   search,
@@ -64,16 +71,28 @@ export function FilterToolbar({
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
-          'image/png': toBlob(node, captureOptions).then((blob) => {
-            if (!blob) throw new Error('Gagal membuat screenshot')
+          'image/png': waitForPaint().then(async () => {
+            const blob = await domToBlob(node, {
+              scale: 1.5,
+              backgroundColor: '#ffffff',
+              font: false,
+              filter: (el) =>
+                !(
+                  el instanceof HTMLElement &&
+                  el.dataset.noCapture !== undefined
+                ),
+            })
+            if (!blob) throw new Error('Failed to capture screenshot')
             return blob
           }),
         }),
       ])
       finish('done')
+      toast.success('Screenshot copied to clipboard')
     } catch (err) {
       console.error(err)
       finish('error')
+      toast.error('Failed to copy screenshot')
     }
   }
 
@@ -106,9 +125,12 @@ export function FilterToolbar({
           onClick={handleCopy}
           disabled={status === 'loading'}
           aria-busy={status === 'loading'}
+          title="Copy screenshot to clipboard"
         >
           {status === 'loading' ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span className="animate-pulse text-[11px] text-zinc-500">
+              Capturing...
+            </span>
           ) : status === 'done' ? (
             <Check className="h-3.5 w-3.5 text-emerald-600" />
           ) : (
