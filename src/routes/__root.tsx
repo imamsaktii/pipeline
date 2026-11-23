@@ -37,7 +37,7 @@ export const Route = createRootRoute({
       <img
         src="/empty-states/not-found.png"
         alt="Page not found"
-        className="mb-4 h-56 w-56 object-contain"
+        className="mb-4 h-80 w-80 object-contain"
       />
       <p className="font-mono text-xs font-medium text-zinc-400">404</p>
       <h1 className="mt-1.5 text-lg font-semibold tracking-tight text-zinc-950">
